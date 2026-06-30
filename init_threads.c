@@ -7,7 +7,8 @@ shared_config *init_config(int *parsed_args, int coder_num)
     shared_config *config;
 
     i = -1;
-    compile_arr = malloc(coder_num * sizeof(*arr));
+    compile_arr = malloc(coder_num * sizeof(*compile_arr));
+    config = malloc(sizeof(*config));
     if (!compile_arr)
         return (free(parsed_args), NULL);
     if (!config)
