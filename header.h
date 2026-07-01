@@ -19,9 +19,8 @@ typedef struct shared_config
     int time_to_refactor;
     int number_of_compiles_required;
     int dongle_cooldown;
-    int scheduler;
-    int curr_coder;
     int *number_of_compiles;
+    int *number_of_dongles;
 }   shared_config;
 
 typedef struct request_queue
