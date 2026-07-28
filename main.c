@@ -2,26 +2,24 @@
 
 int main(int argc, char **argv)
 {
-    int i;
     int coder_num;
     int *parsed_args;
     pthread_t *threads;
-    thread_state *state;
 
-    i = -1;
     if (argc != 9)
-        return (printf("[ERROR] Needs 9 arguments\n"), 1);
+        return (printf("[ERROR] Needs 8 arguments to run\n"), 1);
     parsed_args = parsing(argv);
     if (!parsed_args)
         return (1);
     coder_num = parsed_args[0];
-    state = malloc((coder_num + 1) * sizeof(*state));
     threads = malloc((coder_num + 1) * sizeof(*threads));
-    if (!state || !threads)
-        return (free(parsed_args), printf("[ERROR] Allocation failed\n"), 1);
-    if (!init_state(parsed_args, state, coder_num))
+    if (!threads)
         return (printf("[ERROR] Allocation failed\n"), 1);
-    if (!init_threads(threads, coder_func, monitor_func, state, coder_num))
+    if (!init_threads(threads, state, parsed_args, coder_func, monitor_func))
         return (1);
+    while (coder_num--)
+        pthread_join(threads[coder_num], NULL);
+    pthread_cond_destroy(&state->config->free_dongles);
+    pthread_cond_destroy(&state->config->both_dongles);
+    pthread_mutex_destroy(&state->config->lock);
 }
-
