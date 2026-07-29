@@ -18,42 +18,35 @@ typedef struct shared_data
     int number_of_compiles_required;
     int time_to_cooldown;
     int *number_of_compiles;
-    int *number_of_dongles;
 }   shared_data;
 
-typedef struct manager
+typedef struct shared_state
 {
+    pthread_mutex_t wait;
+    pthread_cond_t available;
+}   shared_state;
+
+typedef struct dongle
+{
+    int is_free;
+    int last_used;
     pthread_mutex_t lock;
-    pthread_cond_wait cond; 
-}   manager;
+}   dongle;
 
 typedef struct coder_thread
 {
-    int thread_id;
+    int id;
+    struct dongle *left_dongle;
+    struct dongle *right_dongle;
     struct shared_data *data;
-    struct queue *coder_queue;
-    struct dongle_list *dongles;
-    struct manager *state;
+    struct shared_state *state;
 }   coder_thread;
 
 typedef struct monitor_thread
 {
-    int thread_id;
+    int id;
     struct shared_data *data;
 }   monitor_thread;
-
-typedef struct dongle
-{
-    int free_dongle;
-    int last_used;
-    pthread_mutex_t dongle_lock;
-}   dongle;
-
-typedef struct queue
-{
-    int id;
-    struct queue *next;
-}   queue;
 
 // parsing.c
 int *display_error(char *inv_arg, int i);

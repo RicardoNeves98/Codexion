@@ -16,31 +16,7 @@ shared_data *init_data(int *parsed_args)
     data->number_of_compiles_required = parsed_args[5];
     data->dongle_cooldown = parsed_args[6];
     data->number_of_compiles = get_zeros_arr(coder_num);
-    data->number_of_dongles = get_zeros_arr(coder_num);
     return (data);
-}
-
-queue *init_queue(int coder_num)
-{
-    int i;
-    struct queue *start_queue;
-    struct queue *curr_queue;
-    struct queue *next_queue;
-
-    i = 0;
-    start_queue = malloc(sizeof(*start_queue));
-    start_queue->id = 0;
-    start_queue->next = NULL;
-    curr_queue = start_queue;
-    while (++i < coder_num)
-    {
-        next_queue = malloc(sizeof(*next_queue));
-        next_queue->id = i;
-        next_queue->next = NULL;
-        curr_queue->next = next_queue;
-        curr_queue = next_queue;
-    }
-    return (start_queue);
 }
 
 dongle *init_dongle_list(int coder_num)
@@ -52,6 +28,7 @@ dongle *init_dongle_list(int coder_num)
     dongle_list = malloc(coder_num * sizeof(*dongle_list));
     while (++i < coder_num)
     {
+        dongle_list[i].is_free = 1;
         dongle_list[i].last_used = 0;
         pthread_mutex_init(&dongle_list[i].dongle_lock);
     }

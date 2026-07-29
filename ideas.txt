@@ -1,0 +1,5 @@
+Vamos pensar então como estruturar isto: 
+-> Coder tenta apanhar primeiro dongle 
+-> Coder tenta apanhar segundo dongle 
+-> Se não apanhar segundo dongle larga o primeiro 
+-> Compila   
