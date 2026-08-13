@@ -21,11 +21,12 @@ typedef struct shared_data
     int time_to_compile;
     int time_to_debug;
     int time_to_refactor;
-    int compiles_required;
+    int comp_required;
     int scheduler;
     struct timespec max_wait;
-    int *number_of_compiles;
+    struct queue *next_to_go;
     pthread_mutex_t output;
+    pthread_mutex_t queue;
 }   shared_data;
 
 typedef struct queue
@@ -40,7 +41,7 @@ typedef struct dongle
     int is_free;
     struct timespec cooldown;
     struct timespec next_aval;
-    struct *queue;
+    struct queue *next_to_use;
     pthread_mutex_t next;
     pthread_mutex_t state;
     pthread_cond_t available;
@@ -49,6 +50,7 @@ typedef struct dongle
 typedef struct coder_thread
 {
     int id;
+    int num_compiles;
     struct timespec last_compile;
     struct dongle *left_dongle;
     struct dongle *right_dongle;
@@ -58,6 +60,8 @@ typedef struct coder_thread
 typedef struct monitor_thread
 {
     int id;
+    int total_comp;
+    int total_required;
     struct shared_data *data;
 }   monitor_thread;
 
@@ -79,6 +83,7 @@ int init_threads(pthread_t *threads, int *parsed_args,
                  void *(*coder_func)(void *), void *(*monitor_func)(void *));
 
 // monitor_func.c
+
 
 // parsing.c
 int *display_error(char *inv_arg, int i);

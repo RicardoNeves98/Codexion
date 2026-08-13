@@ -15,8 +15,8 @@ shared_data *init_data(int *parsed_args)
     data->time_to_refactor = parsed_args[4];
     data->compiles_required = parsed_args[5];
     data->scheduler = parsed_args[7];
+    data->total_compiles = 0;
     data->max_wait = time_convert(parsed_args[2] + parsed_args[6]);
-    data->number_of_compiles = get_zeros_arr(coder_num);
     return (free(parsed_args), data);
 }
 
@@ -36,7 +36,7 @@ dongle *init_dongle_list(int coder_num, int cooldown)
         dongle_list[i].is_free = 1;
         dongle_list[i].cooldown = cooldown_tv;
         dongle_list[i].next_aval = now;
-        dongle_list[i].queue = NULL;
+        dongle_list[i].next_to_use = NULL;
         pthread_mutex_init(&dongle_list[i].next, NULL);
         pthread_mutex_init(&dongle_list[i].state, NULL);
         pthread_cond_init(&dongle_list[i].available, NULL);

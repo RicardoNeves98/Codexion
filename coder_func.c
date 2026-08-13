@@ -17,7 +17,7 @@ void go_work(struct coder_thread *coder_info, struct dongle *dongle1,
     update_next_aval(dongle2);
     pthread_cond_signal(&dongle2->available);
     pthread_mutex_unlock(&dongle2->state);
-    coder_info->data->number_of_compiles[coder_info->id] += 1;
+    coder_info->num_compiles += 1;
     pthread_mutex_lock(&coder_info->data->output);
     printf("%d is debugging\n", coder_info->id);
     pthread_mutex_unlock(&coder_info->data->output);
@@ -43,15 +43,15 @@ void make_request(struct dongle *dongle1, struct dongle *dongle2, int scheduler,
 {
     pthread_mutex_lock(&dongle1->state);
     if (!scheduler)
-        fifo(&dongle1->queue, id);
+        fifo(&dongle1->next_to_use, id);
     else
-        edf(&dongle1->queue, id, time);
+        edf(&dongle1->next_to_use, id, time);
     pthread_mutex_unlock(&dongle1->state);
     pthread_mutex_lock(&dongle2->state);
     if (!scheduler)
-        fifo(&dongle2->queue, id);
+        fifo(&dongle2->next_to_use, id);
     else
-        edf(&dongle2->queue, id, time);
+        edf(&dongle2->next_to_use, id, time);
     pthread_mutex_unlock(&dongle2->state);
 }
 
@@ -63,7 +63,7 @@ int get_dongle(struct dongle *curr_dongle, int coder_id, int max_wait)
     pthread_mutex_lock(&curr_dongle->state);
     clock_gettime(CLOCK_MONOTONIC, &now);
     time_limit = add_time(now, max_wait);
-    while (curr_dongle->queue->id != coder_id)
+    while (curr_dongle->next_to_use->id != coder_id)
         pthread_cond_timedwait(&curr_dongle->next,
                                &curr_dongle->state, &time_limit);
         clock_gettime(CLOCK_MONOTONIC, &now);
@@ -86,11 +86,11 @@ int get_dongle(struct dongle *curr_dongle, int coder_id, int max_wait)
 int check_next(struct dongle *dongle1, struct dongle *dongle2, int coder_id)
 {
     pthread_mutex_lock(&dongle1->state);
-    if (dongle1->queue->id == coder_id)
+    if (dongle1->next_to_use->id == coder_id)
         return (1);
     pthread_mutex_unlock(&dongle1->state);
     pthread_mutex_lock(&dongle2->state);
-    if (dongle2->queue->id == coder_id)
+    if (dongle2->next_to_use->id == coder_id)
         return (1);
     pthread_mutex_unlock(&dongle2->state);
     return (0);
@@ -107,7 +107,7 @@ void *coder_func(void *coder_state)
     coder_info = (struct coder_thread *)coder_state;
     curr_dongle = coder_info->left_dongle;
     next_dongle = coder_info->right_dongle;
-    while (1)
+    while (coder_info->num_compiles < coder_info->data->comp_required)
     {
         make_request(curr_dongle, next_dongle, coder_info->data->scheduler,
                      coder_info->id, coder_info->last_compile);

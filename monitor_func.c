@@ -1,6 +1,20 @@
 #include "codexion.h"
 
 
+void *monitor_func(void *monitor_state)
+{
+    struct monitor_thread *monitor_info;
+
+    monitor_info = (struct monitor_thread *)monitor_info;
+    while (monitor_info->total_comp < monitor_info->total_required)
+    {
+        pthread_mutex_init(&)
+        pthread_cond_timedwait()
+                
+    }
+    return (NULL);
+}
+
 - We have to have a monitor function that will keep on running until a coder burns out or 
 they are get to the number of compiles required 
 

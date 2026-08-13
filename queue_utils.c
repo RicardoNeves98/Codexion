@@ -4,9 +4,9 @@ void update_queue(struct dongle *curr_dongle)
 {
     queue *first_request;
 
-    first_request = curr_dongle->queue->next;
-    free(curr_dongle->queue);
-    curr_dongle->queue = first_request;
+    first_request = curr_dongle->next_to_use->next;
+    free(curr_dongle->next_to_use);
+    curr_dongle->next_to_use = first_request;
     pthread_cond_signal(&dongle->next);
 }
 
@@ -18,7 +18,7 @@ void remove_request(struct dongle *curr_dongle, int coder_id)
 
     pthread_mutex_lock(&curr_dongle->state);
     prev_request = NULL;
-    curr_request = curr_dongle->queue;
+    curr_request = curr_dongle->next_to_use;
     while (curr_request && curr_request->id != coder_id && curr_request->next)
     {
         prev_request = curr_request;
@@ -29,7 +29,7 @@ void remove_request(struct dongle *curr_dongle, int coder_id)
         next_request = curr_request->next;
         if (!prev_request)
         {
-            curr_dongle->queue = next_request;
+            curr_dongle->next_to_use = next_request;
             pthread_cond_signal(curr_dongle->next);
         }
         else
