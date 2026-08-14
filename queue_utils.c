@@ -1,47 +1,99 @@
 #include "codexion.h"
 
-void update_queue(struct dongle *curr_dongle)
+int remove_queue_id(struct queue **head, int coder_id)
 {
-    queue *first_request;
+    struct queue *prev;
+    struct queue *curr;
+    struct queue *next;
 
-    first_request = curr_dongle->next_to_use->next;
-    free(curr_dongle->next_to_use);
-    curr_dongle->next_to_use = first_request;
-    pthread_cond_signal(&dongle->next);
-}
-
-void remove_request(struct dongle *curr_dongle, int coder_id)
-{
-    queue *prev_request;
-    queue *curr_request;
-    queue *next_request;
-
-    pthread_mutex_lock(&curr_dongle->state);
-    prev_request = NULL;
-    curr_request = curr_dongle->next_to_use;
-    while (curr_request && curr_request->id != coder_id && curr_request->next)
+    prev = NULL;
+    curr = *head;
+    while (curr && curr->id != coder_id)
     {
-        prev_request = curr_request;
-        curr_request = curr_request->next;
+        prev = curr;
+        curr = curr->next;
     }
-    if (curr_request)
+    if (!curr)
+        return (0);
+    if (curr)
     {
-        next_request = curr_request->next;
-        if (!prev_request)
+        next = curr->next;
+        if (!prev)
         {
-            curr_dongle->next_to_use = next_request;
-            pthread_cond_signal(curr_dongle->next);
+            *head = next;
+            return (1);
         }
         else
-            prev_request->next = next_request;
-        free(curr_request);
+            prev->next = next;
+        free(curr);
     }
-    curr_dongle->is_free = 1;
-    pthread_mutex_unlock(&curr_dongle->state);
+    return (0);
+}
+
+void insert_fifo(struct queue **queue_head, int id, struct timespec *burnout)
+{
+    struct queue *new;
+    struct queue *last;
+    struct timespec now;
+
+    new = malloc(sizeof(*new_request));
+    new->id = id;
+    new->next = NULL;
+    if (burnout)
+    {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        new->time = add_time(*burnout, now);
+    }
+    last = *head;
+    if (!last)
+        *head = new;
+    else
+    {
+        while (last->next)
+            last = last->next;
+        last->next = new;
+    }
+}
+
+void insert_edf(struct queue **queue_head, int id, struct timespec time)
+{
+    queue *new;
+    queue *last;
+
+    new = malloc(sizeof(*new_request));
+    new->id = id;
+    new->time = time;
+    new->next = NULL;
+    last = *head
+    if (!last)
+        *head = new;
+    else
+    {
+        if (cmp_time(time, last->time) <= 0)
+        {
+            new->next = last;
+            *head = new;
+        }
+        else
+            last->next = new;
+    }
 }
 
 void remove_requests(struct dongle *dongle1, struct dongle *dongle2, int coder_id)
 {
-    remove_request(dongle1, coder_id);
-    remove_request(dongle2, coder_id);
+    pthread_mutex_lock(&dongle1->state);
+    if remove_request(&dongle1->requests, coder_id)
+    {
+        pthread_cond_signal(&dongle1->next);
+        dongle1->is_free = 1;
+    }
+    pthread_mutex_unlock(&dongle1->state);
+    pthread_mutex_lock(&dongle2->state);
+    if remove_request(&dongle2->requests, coder_id)
+    {
+        pthread_cond_signal(&dongle2->next);
+        dongle2->is_free = 1;
+    }
+    pthread_mutex_unlock(&dongle2->state);
+
 }

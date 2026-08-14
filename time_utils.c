@@ -1,6 +1,6 @@
 #include "codexion.h"
 
-struct timespec time_convert(int time_ms)
+struct timespec ms_to_timespec(int time_ms)
 {
     struct timespec new_format;
 
@@ -9,15 +9,25 @@ struct timespec time_convert(int time_ms)
     return (new_format);
 }
 
-// This function returns 1 if TIME1 is OLDER or SAME as TIME2 and 0 in the other case
-int cmp_time(struct timespec time1, struct timespec time2)
+int timespec_to_ms(struct timespec time)
 {
-    if (time1.tv_sec < time2.tv_sec)
-        return (1);
-    else if (time1.tv_sec == time2.tv_sec)
-        if (time1.tv_nsec <= time2.tv_nsec)
-            return (1);
-    return (0);
+    int time_ms;
+
+    time_ms = time.tv_sec * 1000;
+    time_ms += time.tv_nsec / 1000000;
+    return (time_ms);
+}
+
+int get_time_diff(struct timespec time1, struct timespec time2)
+{
+    return (nano_to_ms(time1) - nano_to_ms(time2)); 
+}
+
+struct timespec get_min_time(struct timespec time1, struct timespec time2)
+{
+    if (get_time_diff(time1, time2) < 0)
+        return (time1);
+    return (time2);
 }
 
 struct timespec add_time(struct timespec time1, struct timespec time2)
@@ -31,10 +41,10 @@ struct timespec add_time(struct timespec time1, struct timespec time2)
     return (result);
 }
 
-void update_next_aval(dongle *curr_dongle)
+struct timespec add_curr_time(struct timespec time)
 {
     struct timespec now;
 
     clock_gettime(CLOCK_MONOTONIC, &now);
-    curr_dongle->next_aval = add_time(now, curr_dongle->cooldown);
+    return (add_time(now, time));
 }

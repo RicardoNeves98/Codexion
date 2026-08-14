@@ -1,131 +1,75 @@
 #include "codexion.h"
 
-void go_work(struct coder_thread *coder_info, struct dongle *dongle1,
-             struct dongle *dongle2)
-{
-    pthread_mutex_lock(&coder_info->data->output);
-    printf("%d is compiling\n", coder_info->id);
-    pthread_mutex_unlock(&coder_info->data->output);
-    usleep(coder_info->data->time_to_compile * 1000);
-    pthread_mutex_lock(&dongle1->state);
-    dongle1->is_free = 1;
-    update_next_aval(dongle1);
-    pthread_cond_signal(&dongle1->available);
-    pthread_mutex_unlock(&dongle1->state);
-    pthread_mutex_lock(&dongle2->state);
-    dongle2->is_free = 1;
-    update_next_aval(dongle2);
-    pthread_cond_signal(&dongle2->available);
-    pthread_mutex_unlock(&dongle2->state);
-    coder_info->num_compiles += 1;
-    pthread_mutex_lock(&coder_info->data->output);
-    printf("%d is debugging\n", coder_info->id);
-    pthread_mutex_unlock(&coder_info->data->output);
-    usleep(coder_info->data->time_to_debug * 1000);
-    pthread_mutex_lock(&coder_info->data->output);
-    printf("%d is refactoring\n", coder_info->id);
-    pthread_mutex_unlock(&coder_info->data->output);
-    usleep(coder_info->data->time_to_refactor * 1000);
-}
-
-int check_aval(struct dongle *curr_dongle)
-{
-    struct timespec now;
-
-    if (!curr_dongle->is_free)
-        return (0);
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    return (cmp_time(now, curr_dongle->next_aval));
-}
-
-void make_request(struct dongle *dongle1, struct dongle *dongle2, int scheduler,
-                  int id, struct timespec time)
+void make_request(struct dongle *dongle1, struct dongle *dongle2,
+                  int id, int scheduler, struct timespec time)
 {
     pthread_mutex_lock(&dongle1->state);
     if (!scheduler)
-        fifo(&dongle1->next_to_use, id);
+        insert_fifo(&dongle1->requests, id, NULL);
     else
-        edf(&dongle1->next_to_use, id, time);
+        insert_edf(&dongle1->requests, id, &time);
     pthread_mutex_unlock(&dongle1->state);
     pthread_mutex_lock(&dongle2->state);
     if (!scheduler)
-        fifo(&dongle2->next_to_use, id);
+        insert_fifo(&dongle2->requests, id, NULL);
     else
-        edf(&dongle2->next_to_use, id, time);
+        insert_edf(&dongle2->requests, id, &time);
     pthread_mutex_unlock(&dongle2->state);
 }
 
-int get_dongle(struct dongle *curr_dongle, int coder_id, int max_wait)
+void start_over(struct dongle *dongle1, struct dongle *dongle2, int coder_id)
 {
-    struct timespec now;
-    struct timespec time_limit;
+    int start_clean;
 
-    pthread_mutex_lock(&curr_dongle->state);
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    time_limit = add_time(now, max_wait);
-    while (curr_dongle->next_to_use->id != coder_id)
-        pthread_cond_timedwait(&curr_dongle->next,
-                               &curr_dongle->state, &time_limit);
-        clock_gettime(CLOCK_MONOTONIC, &now);
-        if (cmp_time(now, time_limit))
+    start_clean = 0;
+    pthread_mutex_lock(&dongle1->state);
+    if (dongle1->requests->id == coder_id)
+        start_clean = 1;
+    pthread_mutex_unlock(&dongle1->state);
+    pthread_mutex_lock(&dongle2->state);
+    if (dongle2->requests->id == coder_id)
+        start_clean = 1;
+    pthread_mutex_unlock(&dongle2->state);
+    if (start_clean)
+        remove_requests(dongle1, dongle2, coder_id);
+}
+
+int get_both_dongles(struct dongle *left_dongle, struct dongle *right_dongle,
+                     int coder_id, struct timespec time_limit)
+{
+    int dongle_num;
+    struct dongle *curr_dongle;
+
+    dongle_num = 0;
+    curr_dongle = left_dongle;
+    while (dongle_num < 2)
+    {
+        if (get_dongle(curr_dongle, coder_id, time_limit))
+        {
+            dongle_num += 1;
+            curr_dongle = right_dongle;
+        }
+        else
             return (0);
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    time_limit = add_time(now, max_wait);
-    while (!check_aval(curr_dongle))
-        pthread_cond_timedwait(&curr_dongle->available,
-                               &curr_dongle->state, &time_limit);
-        if (cmp_time(now, time_limit))
-            return (0);
-    curr_dongle->is_free = 0;
-    printf("%d has taken a dongle\n", coder_id);
-    update_queue(curr_dongle);
-    pthread_mutex_unlock(&curr_dongle->state);
+    }
     return (1);
-}
-
-int check_next(struct dongle *dongle1, struct dongle *dongle2, int coder_id)
-{
-    pthread_mutex_lock(&dongle1->state);
-    if (dongle1->next_to_use->id == coder_id)
-        return (1);
-    pthread_mutex_unlock(&dongle1->state);
-    pthread_mutex_lock(&dongle2->state);
-    if (dongle2->next_to_use->id == coder_id)
-        return (1);
-    pthread_mutex_unlock(&dongle2->state);
-    return (0);
 }
 
 void *coder_func(void *coder_state)
 {
-    int dongle_num;
-    struct dongle *curr_dongle;
-    struct dongle *next_dongle;
     struct coder_thread *coder_info;
 
-    dongle_num = 0;
     coder_info = (struct coder_thread *)coder_state;
-    curr_dongle = coder_info->left_dongle;
-    next_dongle = coder_info->right_dongle;
     while (coder_info->num_compiles < coder_info->data->comp_required)
     {
-        make_request(curr_dongle, next_dongle, coder_info->data->scheduler,
-                     coder_info->id, coder_info->last_compile);
-        while (dongle_num < 2)
-        {
-            if (get_dongle(curr_dongle, coder_info->id, coder_info->data->max_wait))
-            {
-                dongle_num += 1;
-                switch_dongles(&curr_dongle, &next_dongle);
-            }
-            else if (dongle_num == 1 || check_next(curr_dongle, next_dongle))
-            {
-                remove_requests(curr_dongle, next_dongle, coder_info->id)
-                dongle_num == 0;
-                break;
-            }
-        }
-        go_work(coder_info, curr_dongle, next_dongle);
+        make_request(coder_info->left_dongle, coder_info->right_dongle, coder_info->id,
+                     coder_info->data->scheudler, coder_info->last_compile);
+        time_limit = add_curr_time(coder_info->data->max_wait);
+        if (get_both_dongles(coder_info->left_dongle, coder_info->right_dongle,
+                             coder_info->id, time_limit))
+            go_work(coder_info);
+        else
+            start_over(coder_info->left_dongle, right_dongle, coder_id);
     }
     return (NULL);
 }

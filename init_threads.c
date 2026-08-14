@@ -40,6 +40,8 @@ int create_coder_thread(pthread_t *threads, int coder_num, int cooldown,
         coder_info->state = state;
         if (pthread_create(&threads[i], NULL, coder_func, coder_info))
             return (printf("Error\n"), 0);
+        if (!insert_deadline(&data->deadline, data->time_to_burnout, i))
+            return (printf("Error\n"), 0);
     }
     return (1);
 }

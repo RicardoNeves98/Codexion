@@ -3,20 +3,26 @@
 shared_data *init_data(int *parsed_args)
 {
     int coder_num;
+    struct timespec now;
     shared_data *data;
 
     data = malloc(sizeof(*data));
     if (!data)
         return (NULL);
+    clock_gettime(CLOCK_MONOTONIC, &now);
     data->coder_num = parsed_args[0];
-    data->time_to_burnout = parsed_args[1];
     data->time_to_compile = parsed_args[2];
     data->time_to_debug = parsed_args[3];
     data->time_to_refactor = parsed_args[4];
     data->compiles_required = parsed_args[5];
     data->scheduler = parsed_args[7];
-    data->total_compiles = 0;
-    data->max_wait = time_convert(parsed_args[2] + parsed_args[6]);
+    data->time_to_burnout = time_convert(parsed_args[1]);
+    data->max_wait = ms_to_timespec(parsed_args[2] + parsed_args[6]);
+    data->start_time = now;
+    data->deadline = NULL;
+    pthread_mutex_init(&data->output);
+    pthread_mutex_init(&data->state);
+    pthread_cond_init(&data->cond);
     return (free(parsed_args), data);
 }
 
