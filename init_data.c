@@ -16,14 +16,19 @@ void fill_data(int *parsed_args, struct shared_data *data)
 int init_data_mutex_and_cond(struct shared_data *data)
 {
     if (pthread_mutex_init(&data->output, NULL))
+    {
+        printf("Error initializing mutex variable\n");
         return (0);
+    }
     if (pthread_mutex_init(&data->state, NULL))
     {
+        printf("Error initializing mutex variable\n");
         pthread_mutex_destroy(&data->output);
         return (0);
     }
     if (pthread_cond_init(&data->cond, NULL))
     {
+        printf("Error initializing cond variable\n");
         pthread_mutex_destroy(&data->output);
         pthread_mutex_destroy(&data->state);
         return (0);

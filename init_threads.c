@@ -1,27 +1,50 @@
 #include "codexion.h"
 
+int init_dongle_mutex_and_cond(struct dongle *curr_dongle)
+{
+    if (pthread_mutex_init(&data->next, NULL))
+    {
+        printf("Error initializing mutex variable\n");
+        return (0);
+    if (pthread_mutex_init(&data->state, NULL))
+    {
+        printf("Error initializing mutex variable\n");
+        pthread_mutex_destroy(&data->next);
+        return (0);
+    }
+    if (pthread_cond_init(&data->available, NULL))
+    {
+        printf("Error initializing cond variable\n");
+        pthread_mutex_destroy(&data->next);
+        pthread_mutex_destroy(&data->state);
+        return (0);
+    }
+    return (1);
+}
+
 struct dongle *create_dongles(int coder_num, struct timespec cooldown)
 {
     int i;
     struct dongle *dongles;
+    struct queue *requests;
     struct timespec now;
 
     i = -1;
     dongles = malloc(coder_num * sizeof(*dongles));
     if (!dongles)
         return (printf("Error allocation dongles\n"), NULL);
+    requests = init_requests();
+    if (!requests)
+        return (free(dongles), NULL);
     while (++i < coder_num)
     {
         clock_gettime(CLOCK_MONOTONIC, &now);
         dongles[i].next_aval = now;
         dongles[i].is_free = 1;
         dongles[i].cooldown = cooldown;
-        dongles[i].requests = init_requests();
-        if (!dongles[i].requests)
-            return (NULL);
-        pthread_mutex_init(&dongles[i].next, NULL);
-        pthread_mutex_init(&dongles[i].state, NULL);
-        pthread_cond_init(&dongles[i].available, NULL);
+        dongles[i].requests = requests;
+        if (!init_dongle_mutex_and_cond(&dongles[i]))
+            return (free(dongles), free(requests), NULL);
     }
     return (dongles);
 }
@@ -34,6 +57,8 @@ struct coders_state *init_coders_state(int cooldown, struct shared_data *data)
 
     i = -1;
     dongles = create_dongles(coder_num, ms_to_timespec(data->cooldown));
+    if (!dongles)
+        return (NULL);
     data->dongles = dongles;
     coders_info = malloc(coder_num * sizeof(*coders_info));
     if (!coders_info)
