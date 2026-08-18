@@ -1,75 +1,81 @@
 #include "codexion.h"
 
-shared_state *init_state(void)
-{
-    shared_state *state;
-
-    state = malloc(sizeof(*state));
-    if (!state)
-        return (NULL);
-    pthread_mutex_init(&state->wait, NULL);
-    pthread_cond_init(&state->available, NULL);
-    return (state);
-}   
-
-int create_coder_thread(pthread_t *threads, int coder_num, int cooldown,
-                        shared_data *data, void *(*coder_func)(void*))
+struct dongle *create_dongles(int coder_num, struct timespec cooldown)
 {
     int i;
-    struct coder_thread *coder_info;
     struct dongle *dongles;
-    struct shared_state *state;
+    struct timespec now;
 
-    i = 0;
-    dongles = init_dongle_list(coder_num, cooldown);
+    i = -1;
+    dongles = malloc(coder_num * sizeof(*dongles));
     if (!dongles)
-        return (printf("Error\n"), 0);
-    state = init_state();
-    if (!state)
-        return (printf("Error\n"), 0);
-    while (++i <= coder_num)
+        return (printf("Error allocation dongles\n"), NULL);
+    while (++i < coder_num)
     {
-        coder_info = malloc(sizeof(*coder_info));
-        if (!coder_info)
-            return (printf("Error\n"), 0);
-        coder_info->id = i;
-        coder_info->num_compiles = 0;
-        coder_info->left_dongle = &dongles[i - 1];
-        coder_info->right_dongle = &dongles[i % coder_num];
-        coder_info->data = data;
-        coder_info->state = state;
-        if (pthread_create(&threads[i], NULL, coder_func, coder_info))
-            return (printf("Error\n"), 0);
-        if (!insert_deadline(&data->deadline, data->time_to_burnout, i))
-            return (printf("Error\n"), 0);
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        dongles[i].next_aval = now;
+        dongles[i].is_free = 1;
+        dongles[i].cooldown = cooldown;
+        dongles[i].requests = init_requests();
+        if (!dongles[i].requests)
+            return (NULL);
+        pthread_mutex_init(&dongles[i].next, NULL);
+        pthread_mutex_init(&dongles[i].state, NULL);
+        pthread_cond_init(&dongles[i].available, NULL);
     }
-    return (1);
+    return (dongles);
 }
 
-int init_threads(pthread_t *threads, int *parsed_args,
-                 void *(*coder_func)(void *), void *(*monitor_func)(void *))
+struct coders_state *init_coders_state(int cooldown, struct shared_data *data)
 {
-    int coder_num;
-    int cooldown;
-    shared_data *data;
-    monitor_thread *monitor_info;
+    int i;
+    struct dongle *dongles;
+    struct coder_thread *coders_info;
 
-    coder_num = parsed_args[0];
-    cooldown = parsed_args[6];
-    total_required = parsed_args[0] * parsed_args[5];
-    data = init_data(parsed_args);
-    if (!data)
-        return (printf("Error\n"), 0);
-    if (!create_coder_thread(threads, coder_num, cooldown, data, coder_func))
-        return (printf("Error\n"), 0);
+    i = -1;
+    dongles = create_dongles(coder_num, ms_to_timespec(data->cooldown));
+    data->dongles = dongles;
+    coders_info = malloc(coder_num * sizeof(*coders_info));
+    if (!coders_info)
+        return (printf("Error allocation coders data\n"), NULL);
+    while (++i < data->coder_num)
+    {
+        coders_info[i].id = i + 1;
+        coders_info[i].num_compiles = 0;
+        coders_info[i].data = data;
+        coders_info[i].left_dongle = &dongles[i];
+        coders_info[i].right_dongle = &dongles[(i + 1) % coder_num];
+    }
+    return (coders_info);
+}
+
+struct monitor_state *init_monitor_state(struct shared_data *data)
+{
+    struct monitor_thread *monitor_info;
+
     monitor_info = malloc(sizeof(*monitor_info));
     if (!monitor_info)
-        return (printf("Error\n"), 0);
+        return (printf("Error allocation monitor data\n"), NULL);
     monitor_info->id = 0;
     monitor_info->total_comp = 0;
-    monitor_info->total_required = total_required;
+    monitor_info->total_required = data->coder_num * data->compiles_required;
     monitor_info->data = data;
+    return (monitor_info);
+}
+
+int init_threads(struct coder_thread *coder_info, void *(*coder_func)(void *),
+                 struct monitor_thread *monitor_info, void *(*monitor_func)(void *))
+{
+    int i;
+
+    i = 0;
     if (pthread_create(&threads[0], NULL, monitor_func, monitor_info))
-        return (printf("Error\n"), 0);
+        return (printf("Error creating monitor thread\n"), 0);
+    while (++i <= coder_info->data->coder_num)
+    {
+        if (pthread_create(&threads[i], NULL, coder_func, &coders_info[i]))
+            return (printf("Error creating coder thread\n"), 0);
+        update_deadline(data->deadline, i + 1, &data->time_to_burnout;
+    }
     return (1);
 }

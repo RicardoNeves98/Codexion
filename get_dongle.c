@@ -61,7 +61,7 @@ int get_dongle(struct dongle *curr_dongle, int coder_id, struct timespec time_li
     }
     curr_dongle->is_free = 0;
     printf("%d has taken a dongle\n", coder_id);
-    remove_queue_id(&curr_dongle->requests, coder_id);
+    update_requests(curr_dongle->requests);
     pthread_cond_signal(&curr_dongle->next);
     pthread_mutex_unlock(&curr_dongle->state);
     return (1);

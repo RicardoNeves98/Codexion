@@ -3,9 +3,8 @@
 void update_deadline_queue(struct coder_thread *coder_info)
 {
     pthread_mutex_lock(&coder_info->data->state);
-    remove_queue_id(&coder_info->data->deadline, coder_info->id);
-    insert_deadline(&coder_info->data->deadline,
-                    coder_info->data->time_to_burnout, coder_info->id);
+    update_deadline(coder_info->data->deadline, coder_info->coder_num,
+                    coder_info->id, &coder_info->data->time_to_burnout);
     pthread_mutex_unlock(&coder_info->data->state);
 }
 

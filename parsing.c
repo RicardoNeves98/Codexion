@@ -16,13 +16,15 @@ int *display_error(char *inv_arg, int i)
     return (NULL);
 }
 
-int *parsing(char **argv)
+int *parsing(int argc, char **argv)
 {
     int i;
     int num;
     int *parsed_args;
 
     i = 0;
+    if (argc != 9)
+        return (printf("[ERROR] Needs 8 arguments to run\n"), NULL);
     parsed_args = malloc(8 * sizeof(*parsed_args));
     if (!parsed_args)
         return (NULL);

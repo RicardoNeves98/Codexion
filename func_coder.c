@@ -5,15 +5,33 @@ void make_request(struct dongle *dongle1, struct dongle *dongle2,
 {
     pthread_mutex_lock(&dongle1->state);
     if (!scheduler)
-        insert_fifo(&dongle1->requests, id, NULL);
+        insert_fifo(dongle1->requests, id);
     else
-        insert_edf(&dongle1->requests, id, &time);
+        insert_edf(dongle1->requests, id, &time);
     pthread_mutex_unlock(&dongle1->state);
     pthread_mutex_lock(&dongle2->state);
     if (!scheduler)
-        insert_fifo(&dongle2->requests, id, NULL);
+        insert_fifo(dongle2->requests, id);
     else
-        insert_edf(&dongle2->requests, id, &time);
+        insert_edf(dongle2->requests, id, &time);
+    pthread_mutex_unlock(&dongle2->state);
+}
+
+void remove_requests(struct dongle *dongle1, struct dongle *dongle2, int coder_id)
+{
+    pthread_mutex_lock(&dongle1->state);
+    if (remove_requests(dongle1->requests, coder_id))
+    {
+        pthread_cond_signal(&dongle1->next);
+        dongle1->is_free = 1;
+    }
+    pthread_mutex_unlock(&dongle1->state);
+    pthread_mutex_lock(&dongle2->state);
+    if (remove_requests(dongle2->requests, coder_id))
+    {
+        pthread_cond_signal(&dongle2->next);
+        dongle2->is_free = 1;
+    }
     pthread_mutex_unlock(&dongle2->state);
 }
 
@@ -52,7 +70,7 @@ int get_both_dongles(struct dongle *left_dongle, struct dongle *right_dongle,
         else
             return (0);
     }
-    return (1);
+   return (1);
 }
 
 void *coder_func(void *coder_state)
@@ -63,13 +81,13 @@ void *coder_func(void *coder_state)
     while (coder_info->num_compiles < coder_info->data->comp_required)
     {
         make_request(coder_info->left_dongle, coder_info->right_dongle, coder_info->id,
-                     coder_info->data->scheudler, coder_info->last_compile);
+                     coder_info->data->scheduler, coder_info->last_compile);
         time_limit = add_curr_time(coder_info->data->max_wait);
         if (get_both_dongles(coder_info->left_dongle, coder_info->right_dongle,
                              coder_info->id, time_limit))
             go_work(coder_info);
         else
-            start_over(coder_info->left_dongle, right_dongle, coder_id);
+            start_over(coder_info->left_dongle, coder_info->right_dongle, coder_id);
     }
     return (NULL);
 }
