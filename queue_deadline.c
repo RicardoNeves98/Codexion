@@ -10,15 +10,12 @@ struct queue *init_deadline(int coder_num)
     if (!deadline)
         return (printf("Error allocating deadline queue\n"), NULL);
     while (++i < coder_num)
-    {
         deadline[i].id = 0;
-        deadline[i].time = NULL;
-    }
     return (deadline);
 }
 
 void update_deadline(struct queue *deadline, int coder_num,
-                     int id, struct timespec *burnout)
+                     int id, struct timespec burnout)
 {
     int i;
 
@@ -37,6 +34,6 @@ void update_deadline(struct queue *deadline, int coder_num,
             switch_spots(deadline, i, i + 1);
             i++;
         }
-        deadline[coder_num - 1].time = burnout;
+        deadline[coder_num - 1].time = add_curr_time(burnout);
     }
 }

@@ -1,6 +1,9 @@
-CFLAGS = -Wall -Wextra -Werror
+CFLAGS = -Wall -Wextra -Werror -g -fsanitize=address
 
-SRCS = main.c parsing.c init_threads.c
+SRCS = compile.c free_stuff.c func_coder.c func_monitor.c get_dongle.c \
+        init_data.c init_threads.c main.c parsing.c queue_deadline.c \
+        queue_requests.c queue_utils.c time_conversion.c time_utils.c
+
 OBJS = $(SRCS:.c=.o)
 
 all: $(OBJS)

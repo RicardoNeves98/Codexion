@@ -7,12 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <pthread.h>
-
-typedef struct timespec
-{
-    time_t tv_sec;
-    long tv_nsec;
-}   timespec;
+#include <errno.h>
 
 typedef struct shared_data
 {    
@@ -28,15 +23,15 @@ typedef struct shared_data
     struct timespec start_time;
     struct queue *deadline;
     struct dongle *dongles;
-    pthread_mutex_t output;
-    pthread_mutex_t state;
-    pthread_cond_t cond;
+    pthread_mutex_t output_mutex;
+    pthread_mutex_t queue_mutex;
+    pthread_cond_t queue_cond;
 }   shared_data;
 
 typedef struct queue
 {
     int id;
-    struct timespec *time;
+    struct timespec time;
 }   queue;
 
 typedef struct dongle
@@ -45,12 +40,11 @@ typedef struct dongle
     struct timespec cooldown;
     struct timespec next_aval;
     struct queue *requests;
-    pthread_mutex_t next;
-    pthread_mutex_t state;
-    pthread_cond_t available;
+    pthread_mutex_t dongle_mutex;
+    pthread_cond_t dongle_cond;
 }   dongle;
 
-typedef struct coder_thread
+typedef struct coders_state
 {
     int id;
     int num_compiles;
@@ -60,7 +54,7 @@ typedef struct coder_thread
     struct shared_data *data;
 }   coder_thread;
 
-typedef struct monitor_thread
+typedef struct monitor_state
 {
     int id;
     int total_comp;
@@ -69,10 +63,10 @@ typedef struct monitor_thread
 }   monitor_thread;
 
 // compile.c
-void update_deadline_queue(struct coder_thread *coder_info);
+void update_deadline_queue(struct coders_state *coder_info);
 void update_dongle_state(struct dongle *curr_dongle);
-void write_output(char *type, struct coder_thread *coder_info);
-void go_work(struct coder_thread *coder_info);
+void write_output(char *type, struct coders_state *coder_info);
+void go_work(struct coders_state *coder_info);
 
 // free_stuff.c
 void free_dongles(struct dongle *dongles, int coder_num);
@@ -82,14 +76,15 @@ void free_all(struct coders_state *coders_info, struct monitor_state *monitor_in
 // func_coder.c
 void make_request(struct dongle *dongle1, struct dongle *dongle2,
                   int id, int scheduler, struct timespec time);
-void remove_requests(struct dongle *dongle1, struct dongle *dongle2, int coder_id);
-void start_over(struct dongle *dongle1, struct dongle *dongle2, int coder_id);
-int get_both_dongles(struct dongle *left_dongle, struct dongle *right_dongle,
-                     int coder_id, struct timespec time_limit);
-void *coder_func(void *coder_state);
+void delete_requests(struct dongle *left_dongle, struct dongle *right_dongle,
+                     int coder_id, int dongle_num);
+int check_queues(struct dongle *left_dongle, struct dongle *right_dongle,
+                  int coder_id);
+int get_both_dongles(struct coders_state *coder_info);
+void *coder_func(void *info);
 
 // func_monitor.c
-void *monitor_func(void *monitor_state);
+void *monitor_func(void *info);
 
 // init_data.c 
 void fill_data(int *parsed_args, struct shared_data *data);
@@ -97,31 +92,33 @@ int init_data_mutex_and_cond(struct shared_data *data);
 struct shared_data *init_data(int *parsed_args);
 
 // init_threads.c
-struct shared_state *init_state(void);
-int create_coder_thread(pthread_t *threads, int coder_num, int cooldown,
-                        shared_data *data, void *(*coder_func)(void*));
-int init_threads(pthread_t *threads, int *parsed_args,
-                 void *(*coder_func)(void *), void *(*monitor_func)(void *));
+int init_dongle_mutex_and_cond(struct dongle *curr_dongle);
+struct dongle *create_dongles(int coder_num, struct timespec cooldown);
+struct coders_state *init_coders_state(struct shared_data *data);
+struct monitor_state *init_monitor_state(struct shared_data *data);
+int init_threads(pthread_t *threads,
+                 struct coders_state *coder_info, void *(*coder_func)(void *),
+                 struct monitor_state *monitor_info, void *(*monitor_func)(void *));
 
 // get_dongle.c
 int check_aval(struct dongle *curr_dongle);
-int wait_line(struct dongle *curr_dongle, int coder_id, struct timespec time_limit);
 int wait_aval(struct dongle *curr_dongle, int coder_id, struct timespec time_limit);
-int get_dongle(struct dongle *curr_dongle, int coder_id, struct timespec time_limit);
+int get_dongle(struct dongle *curr_dongle, pthread_mutex_t output_mutex,
+               int coder_id, struct timespec start_time, struct timespec time_limit);
 
 // parsing.c
 int *display_error(char *inv_arg, int i);
-int *parsing(char **argv);
+int *parsing(int argc, char **argv);
 
 // queue_deadline.c
 struct queue *init_deadline(int coder_num);
 void update_deadline(struct queue *deadline, int coder_num,
-                     int id, struct timespec *burnout);
+                     int id, struct timespec burnout);
 
 // queue_requests.c
 struct queue *init_requests(void);
 void insert_fifo(struct queue *requests, int id);
-void insert_edf(struct queue *requests, int id, struct timespec *last_compile);
+void insert_edf(struct queue *requests, int id, struct timespec last_compile);
 void update_requests(struct queue *requests);
 int remove_requests(struct queue *requests, int id);
 
@@ -130,10 +127,10 @@ void switch_spots(struct queue *line, int index1, int index2);
 
 // time_conversion.c
 struct timespec ms_to_timespec(int time_ms);
-int timespec_to_ms(struct timespec time);
+long timespec_to_ms(struct timespec time);
 
 // time_utils.c
-int get_time_diff(struct timespec time1, struct timespec time2);
+long get_time_diff(struct timespec time1, struct timespec time2);
 struct timespec get_min_time(struct timespec time1, struct timespec time2);
 struct timespec add_time(struct timespec time1, struct timespec time2);
 struct timespec add_curr_time(struct timespec time);

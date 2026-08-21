@@ -7,24 +7,23 @@ void free_dongles(struct dongle *dongles, int coder_num)
     i = -1;
     while (++i < coder_num)
     {
-        pthread_mutex_destroy(&dongles[i].next);
-        pthread_mutex_destroy(&dongles[i].state);
-        pthread_cond_destroy(&dongles[i].available);
+        pthread_mutex_destroy(&dongles[i].dongle_mutex);
+        pthread_cond_destroy(&dongles[i].dongle_cond);
         free(dongles[i].requests);
     }
     free(dongles);
 }
 
-void free_all(struct coders_state *coders_info, struct monitor_state *monitor_info,
+void free_all(struct coders_state *coder_info, struct monitor_state *monitor_info,
               pthread_t *threads)
 {
-    free_dongles(coders_info->data->dongles, coder_info->data->coder_num);
-    pthread_mutex_destroy(&coders_info->data->output);
-    pthread_mutex_destroy(&coders_info->data->state);
-    pthread_cond_destroy(&coders_info->data->cond);
-    free(coders_info->data->deadline);
+    free_dongles(coder_info->data->dongles, coder_info->data->coder_num);
+    pthread_mutex_destroy(&coder_info->data->output_mutex);
+    pthread_mutex_destroy(&coder_info->data->queue_mutex);
+    pthread_cond_destroy(&coder_info->data->queue_cond);
+    free(coder_info->data->deadline);
     free(coder_info->data);
-    free(coders_info);
+    free(coder_info);
     free(monitor_info);
     free(threads);
 }

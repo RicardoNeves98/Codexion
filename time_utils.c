@@ -1,8 +1,8 @@
 #include "codexion.h"
 
-int get_time_diff(struct timespec time1, struct timespec time2)
+long get_time_diff(struct timespec time1, struct timespec time2)
 {
-    return (nano_to_ms(time1) - nano_to_ms(time2)); 
+    return (timespec_to_ms(time1) - timespec_to_ms(time2)); 
 }
 
 struct timespec get_min_time(struct timespec time1, struct timespec time2)
@@ -27,6 +27,6 @@ struct timespec add_curr_time(struct timespec time)
 {
     struct timespec now;
 
-    clock_gettime(CLOCK_MONOTONIC, &now);
+    clock_gettime(CLOCK_REALTIME, &now);
     return (add_time(now, time));
 }

@@ -9,9 +9,9 @@ struct timespec ms_to_timespec(int time_ms)
     return (new_format);
 }
 
-int timespec_to_ms(struct timespec time)
+long timespec_to_ms(struct timespec time)
 {
-    int time_ms;
+    long time_ms;
 
     time_ms = time.tv_sec * 1000;
     time_ms += time.tv_nsec / 1000000;
