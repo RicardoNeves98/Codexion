@@ -9,8 +9,11 @@ void fill_data(int *parsed_args, struct shared_data *data)
     data->comp_required = parsed_args[5];
     data->cooldown = parsed_args[6];
     data->scheduler = parsed_args[7];
+    data->active = 1;
+    data->total_comp = 0;
     data->time_to_burnout = ms_to_timespec(parsed_args[1]);
     data->max_wait = ms_to_timespec(parsed_args[2] + parsed_args[6]);
+    free(parsed_args);
 }
 
 int init_data_mutex_and_cond(struct shared_data *data)
@@ -44,17 +47,17 @@ struct shared_data *init_data(int *parsed_args)
 
     if (!parsed_args)
         return (NULL);
-    deadline = init_deadline(parsed_args[0]);
-    if (!deadline)
-        return (free(parsed_args), NULL);
     data = malloc(sizeof(*data));
     if (!data)
-        return (free(parsed_args), free(deadline), NULL);
+        return (free(parsed_args), NULL);
+    fill_data(parsed_args, data);
+    deadline = init_deadline(data->coder_num);
+    if (!deadline)
+        return (free(data), NULL);
     if (!init_data_mutex_and_cond(data))
-        return (free(parsed_args), free(deadline), NULL);
+        return (free(deadline), free(data), NULL);
     clock_gettime(CLOCK_MONOTONIC, &now);
     data->start_time = now;
     data->deadline = deadline;
-    fill_data(parsed_args, data);
-    return (free(parsed_args), data);
-}
+    return (data);
+} 

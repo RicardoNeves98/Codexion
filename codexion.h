@@ -10,7 +10,7 @@
 #include <errno.h>
 
 typedef struct shared_data
-{    
+{
     int coder_num;
     int time_to_compile;
     int time_to_debug;
@@ -18,6 +18,8 @@ typedef struct shared_data
     int comp_required;
     int cooldown;
     int scheduler;
+    int active;
+    int total_comp;
     struct timespec time_to_burnout;
     struct timespec max_wait;
     struct timespec start_time;
@@ -36,6 +38,7 @@ typedef struct queue
 
 typedef struct dongle
 {
+    int id;
     int is_free;
     struct timespec cooldown;
     struct timespec next_aval;
@@ -57,7 +60,6 @@ typedef struct coders_state
 typedef struct monitor_state
 {
     int id;
-    int total_comp;
     int total_required;
     struct shared_data *data;
 }   monitor_thread;
@@ -74,16 +76,18 @@ void free_all(struct coders_state *coders_info, struct monitor_state *monitor_in
               pthread_t *threads);
 
 // func_coder.c
-void make_request(struct dongle *dongle1, struct dongle *dongle2,
+void make_request(struct dongle *left_dongle, struct dongle *right_dongle,
                   int id, int scheduler, struct timespec time);
 void delete_requests(struct dongle *left_dongle, struct dongle *right_dongle,
-                     int coder_id, int dongle_num);
+                     int coder_id, int has_dongle);
 int check_queues(struct dongle *left_dongle, struct dongle *right_dongle,
                   int coder_id);
-int get_both_dongles(struct coders_state *coder_info);
+void get_both_dongles(struct coders_state *coder_info);
+int check_active(struct coders_state *coder_info);
 void *coder_func(void *info);
 
 // func_monitor.c
+void final_output(struct monitor_state *monitor_info, int burnout);
 void *monitor_func(void *info);
 
 // init_data.c 
@@ -101,10 +105,11 @@ int init_threads(pthread_t *threads,
                  struct monitor_state *monitor_info, void *(*monitor_func)(void *));
 
 // get_dongle.c
-int check_aval(struct dongle *curr_dongle);
-int wait_aval(struct dongle *curr_dongle, int coder_id, struct timespec time_limit);
-int get_dongle(struct dongle *curr_dongle, pthread_mutex_t output_mutex,
-               int coder_id, struct timespec start_time, struct timespec time_limit);
+int check_aval(struct dongle *curr_dongle, struct coders_state *coder_info);
+int wait_aval(struct dongle *curr_dongle, struct coders_state *coder_info,
+              struct timespec time_limit);
+int get_dongle(struct coders_state *coder_info, struct dongle *curr_dongle,
+               struct timespec time_limit);
 
 // parsing.c
 int *display_error(char *inv_arg, int i);

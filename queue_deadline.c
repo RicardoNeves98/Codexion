@@ -25,7 +25,7 @@ void update_deadline(struct queue *deadline, int coder_num,
     if (!deadline[i].id)
     {
         deadline[i].id = id;
-        deadline[i].time = burnout;
+        deadline[i].time = add_curr_time(burnout);
     }
     else
     {

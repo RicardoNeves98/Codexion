@@ -5,8 +5,9 @@ void update_deadline_queue(struct coders_state *coder_info)
     pthread_mutex_lock(&coder_info->data->queue_mutex);
     update_deadline(coder_info->data->deadline, coder_info->data->coder_num,
                     coder_info->id, coder_info->data->time_to_burnout);
-    pthread_mutex_unlock(&coder_info->data->queue_mutex);
+    coder_info->data->total_comp += 1;
     pthread_cond_signal(&coder_info->data->queue_cond);
+    pthread_mutex_unlock(&coder_info->data->queue_mutex);
 }
 
 void update_dongle_state(struct dongle *curr_dongle)
@@ -23,9 +24,12 @@ void write_output(char *type, struct coders_state *coder_info)
     struct timespec now;
 
     pthread_mutex_lock(&coder_info->data->output_mutex);
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    printf("%ld %d is %s\n", get_time_diff(now, coder_info->data->start_time),
-           coder_info->id, type);
+    if (coder_info->data->active)
+    {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        printf("%ld %d is %s\n", get_time_diff(now, coder_info->data->start_time),
+               coder_info->id, type);
+    }
     pthread_mutex_unlock(&coder_info->data->output_mutex);
 }
 
