@@ -18,9 +18,9 @@ typedef struct shared_data
     int comp_required;
     int cooldown;
     int scheduler;
-    int active;
-    int total_comp;
-    struct timespec time_to_burnout;
+    int coders_active;
+    struct timespec start_burnout;
+    struct timespec comp_burnout;
     struct timespec max_wait;
     struct timespec start_time;
     struct queue *deadline;
@@ -65,7 +65,7 @@ typedef struct monitor_state
 }   monitor_thread;
 
 // compile.c
-void update_deadline_queue(struct coders_state *coder_info);
+void update_deadline_queue(struct coders_state *coder_info, int compile);
 void update_dongle_state(struct dongle *curr_dongle);
 void write_output(char *type, struct coders_state *coder_info);
 void go_work(struct coders_state *coder_info);
@@ -87,7 +87,8 @@ int check_active(struct coders_state *coder_info);
 void *coder_func(void *info);
 
 // func_monitor.c
-void final_output(struct monitor_state *monitor_info, int burnout);
+void signal_dongles(struct monitor_state *monitor_info);
+void *finish(struct monitor_state *monitor_info);
 void *monitor_func(void *info);
 
 // init_data.c 
@@ -116,9 +117,10 @@ int *display_error(char *inv_arg, int i);
 int *parsing(int argc, char **argv);
 
 // queue_deadline.c
-struct queue *init_deadline(int coder_num);
-void update_deadline(struct queue *deadline, int coder_num,
-                     int id, struct timespec burnout);
+struct queue *init_deadline(int coder_num, struct timespec start_burnout);
+void update_deadline(struct queue *deadline, int coder_num, int id,
+                     struct timespec burnout, int finished);
+void print_deadline(struct queue *deadline, int coder_num);
 
 // queue_requests.c
 struct queue *init_requests(void);
