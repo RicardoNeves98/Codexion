@@ -55,7 +55,6 @@ int check_queues(struct dongle *left_dongle, struct dongle *right_dongle,
 
 void get_both_dongles(struct coders_state *coder_info)
 {
-    int has_dongle;
     struct timespec time_limit;
     struct dongle *left_dongle;
     struct dongle *right_dongle;
@@ -63,15 +62,9 @@ void get_both_dongles(struct coders_state *coder_info)
     left_dongle = coder_info->left_dongle;
     right_dongle = coder_info->right_dongle;
     time_limit = add_curr_time(coder_info->data->max_wait);
-    has_dongle = get_dongle(coder_info, left_dongle, time_limit);
-    if (has_dongle == -1)
-        return ;
-    else if (has_dongle == 1)
+    if (get_dongle(coder_info, coder_info->left_dongle, time_limit))
     {
-        has_dongle = get_dongle(coder_info, right_dongle, time_limit);
-        if (has_dongle == -1)
-            return ;
-        else if (has_dongle == 1)
+        if (get_dongle(coder_info, right_dongle, time_limit))
             go_work(coder_info);
         else
             delete_requests(left_dongle, right_dongle, coder_info->id, 1);

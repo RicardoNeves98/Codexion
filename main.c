@@ -28,6 +28,5 @@ int main(int argc, char **argv)
         return (free_all(coder_info, monitor_info, threads), 1);
     while (++i <= coder_info->data->coder_num)
         pthread_join(threads[i], NULL);
-    free_all(coder_info, monitor_info, threads);
-    return (0);
+    return (free_all(coder_info, monitor_info, threads), 0);
 }

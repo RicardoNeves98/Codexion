@@ -88,7 +88,7 @@ void *coder_func(void *info);
 
 // func_monitor.c
 void signal_dongles(struct monitor_state *monitor_info);
-void *finish(struct monitor_state *monitor_info);
+void *finish(struct monitor_state *monitor_info, int coder_burned);
 void *monitor_func(void *info);
 
 // init_data.c 
@@ -106,9 +106,8 @@ int init_threads(pthread_t *threads,
                  struct monitor_state *monitor_info, void *(*monitor_func)(void *));
 
 // get_dongle.c
-int check_aval(struct dongle *curr_dongle, struct coders_state *coder_info);
-int wait_aval(struct dongle *curr_dongle, struct coders_state *coder_info,
-              struct timespec time_limit);
+int check_aval(struct dongle *curr_dongle, int coder_id);
+int wait_aval(struct dongle *curr_dongle, struct timespec time_limit, int coder_id);
 int get_dongle(struct coders_state *coder_info, struct dongle *curr_dongle,
                struct timespec time_limit);
 
@@ -118,8 +117,11 @@ int *parsing(int argc, char **argv);
 
 // queue_deadline.c
 struct queue *init_deadline(int coder_num, struct timespec start_burnout);
-void update_deadline(struct queue *deadline, int coder_num, int id,
-                     struct timespec burnout, int finished);
+void move_around(struct queue *deadline, int start, int end);
+void first_deadline_update(struct queue *deadline, int coder_num,
+                           struct timespec burnout);
+void comp_deadline_update(struct queue *deadline, int coder_num, int coder_id,
+                          struct timespec burnout, int finished);
 void print_deadline(struct queue *deadline, int coder_num);
 
 // queue_requests.c
