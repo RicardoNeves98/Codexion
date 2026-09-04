@@ -20,13 +20,20 @@ struct queue *init_deadline(int coder_num, struct timespec start_burnout)
 void move_around(struct queue *deadline, int start, int end)
 {
     int dir;
+    int int_hold;
+    struct timespec time_hold;
 
     dir = 1;
     if (end < start)
         dir = -1;
     while (start != end)
     {
-        switch_spots(deadline, start, start + dir);
+        int_hold = deadline[start].id;
+        time_hold = deadline[start].time;
+        deadline[start].id = deadline[start + dir].id;
+        deadline[start].time = deadline[start + dir].time;
+        deadline[start + dir].id = int_hold;
+        deadline[start + dir].time = time_hold;
         start += dir;
     }
 }

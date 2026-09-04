@@ -9,7 +9,7 @@ void free_dongles(struct dongle *dongles, int index)
     {
         pthread_mutex_destroy(&dongles[i].dongle_mutex);
         pthread_cond_destroy(&dongles[i].dongle_cond);
-        free(dongles[i].requests);
+        free(dongles[i].line);
     }
     free(dongles);
 }

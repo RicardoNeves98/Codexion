@@ -4,7 +4,7 @@ int check_aval(struct dongle *curr_dongle, int coder_id)
 {
     struct timespec now;
 
-    if (curr_dongle->requests->id != coder_id)
+    if (curr_dongle->line[0] != coder_id)
         return (0);
     if (!curr_dongle->is_free)
         return (0);
@@ -46,16 +46,15 @@ int get_dongle(struct coders_state *coder_info, struct dongle *curr_dongle,
         return (0);
     }
     curr_dongle->is_free = 0;
-    update_requests(curr_dongle->requests);
     pthread_cond_signal(&curr_dongle->dongle_cond);
     pthread_mutex_unlock(&curr_dongle->dongle_mutex);
-    pthread_mutex_lock(&coder_info->data->queue_mutex);
-    if (coder_info->data->coders_active)
+    if (check_coders(coder_info))
     {
+        pthread_mutex_lock(&coder_info->data->output_mutex);
         clock_gettime(CLOCK_MONOTONIC, &now);
         printf("%ld %d has taken dongle\n",
-               get_time_diff(now, coder_info->data->start_time), coder_info->id);
+            get_time_diff(now, coder_info->data->start_time), coder_info->id);
+        pthread_mutex_unlock(&coder_info->data->output_mutex);
     }
-    pthread_mutex_unlock(&coder_info->data->queue_mutex);
     return (1);
 }
